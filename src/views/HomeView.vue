@@ -2,6 +2,7 @@
 import DistributionForm from '@/presentation/components/budget/DistributionForm.vue'
 import DistributionGrid from '@/presentation/components/budget/DistributionGrid.vue'
 import AppBar from '@/presentation/components/layout/AppBar.vue'
+import AppFooter from '@/presentation/components/layout/AppFooter.vue'
 import { useBudgetDistribution } from '@/presentation/composables/useBudgetDistribution'
 
 const {
@@ -13,6 +14,7 @@ const {
   removeIncome,
   addAllocation,
   removeAllocation,
+  exportToExcel,
 } = useBudgetDistribution()
 </script>
 
@@ -41,10 +43,13 @@ const {
             @remove-allocation="removeAllocation"
             @remove-income="removeIncome"
             @select-category="(category) => (activeCategoryFilter = category)"
+            @export-excel="exportToExcel"
           />
         </div>
       </div>
     </main>
+
+    <AppFooter />
   </div>
 </template>
 

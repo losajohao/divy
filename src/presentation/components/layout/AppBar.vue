@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import logoUrl from '@/assets/logo.svg'
 import { Currency, formatMoney } from '@/domain/entities/Currency'
 import type { DistributionSummary } from '@/domain/entities/DistributionSummary'
 
@@ -10,7 +11,7 @@ defineProps<{
 <template>
   <header class="app-bar">
     <div class="brand">
-      <div class="brand-badge">D</div>
+      <img :src="logoUrl" alt="Logo de Divy (Panda-Conejo)" class="brand-logo" width="40" height="40" />
       <div>
         <h1 class="brand-title">Divy</h1>
         <p class="brand-subtitle">
@@ -77,17 +78,12 @@ defineProps<{
   gap: 0.75rem;
 }
 
-.brand-badge {
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 0.5rem;
-  background: linear-gradient(135deg, #2563eb, #10b981);
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 1.05rem;
-  display: grid;
-  place-items: center;
+.brand-logo {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.6rem;
   flex-shrink: 0;
+  display: block;
 }
 
 .brand-title {
@@ -173,7 +169,8 @@ defineProps<{
 
 @media (max-width: 680px) {
   .app-bar {
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
   }
 
   .brand-subtitle {
@@ -182,10 +179,26 @@ defineProps<{
 
   .metrics-bar {
     width: 100%;
-    justify-content: space-between;
-    padding-top: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-top: 0.45rem;
     border-top: 1px solid var(--border-subtle);
-    gap: 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .metric-pill {
+    padding: 0.25rem 0.45rem;
+  }
+
+  .metric-label {
+    font-size: 0.58rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .metric-value {
+    font-size: 0.8rem;
   }
 }
 </style>

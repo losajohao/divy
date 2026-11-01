@@ -2,10 +2,7 @@
 import { computed } from 'vue'
 import type { AllocationItem } from '@/domain/entities/AllocationItem'
 import { Currency, formatMoney } from '@/domain/entities/Currency'
-import {
-  DISTRIBUTION_CATEGORIES,
-  type DistributionCategory,
-} from '@/domain/entities/DistributionCategory'
+import { DISTRIBUTION_CATEGORIES } from '@/domain/entities/DistributionCategory'
 import type { DistributionSummary } from '@/domain/entities/DistributionSummary'
 import { INCOME_SOURCES } from '@/domain/entities/IncomeSource'
 import type { GridFilterType } from '@/presentation/composables/useBudgetDistribution'
@@ -20,6 +17,7 @@ const emit = defineEmits<{
   removeAllocation: [id: string]
   removeIncome: [id: string]
   selectCategory: [category: GridFilterType]
+  exportExcel: []
 }>()
 
 const getEquivalentPen = (item: AllocationItem): number => {
@@ -59,51 +57,63 @@ const toggleCategory = (category: GridFilterType) => {
 <template>
   <section class="grid-panel">
     <div class="table-card">
-      <!-- Cabecera compacta con título y barra de filtros incluyendo "Ingresos" -->
+      <!-- Cabecera 100% responsiva: título, filtros y botón Exportar Excel -->
       <div class="table-top-bar">
-        <div class="table-title-group">
+        <div class="title-and-export-mobile">
           <h2>Grilla de Distribución</h2>
         </div>
 
-        <div class="filter-bar" role="tablist" aria-label="Filtrar por categoría">
-          <button
-            type="button"
-            class="filter-btn"
-            :class="{ active: activeCategory === 'ALL' }"
-            @click="emit('selectCategory', 'ALL')"
-          >
-            Todas
-            <span class="filter-count">{{ totalAllCount }}</span>
-          </button>
+        <div class="top-actions">
+          <div class="filter-bar" role="tablist" aria-label="Filtrar por categoría">
+            <button
+              type="button"
+              class="filter-btn"
+              :class="{ active: activeCategory === 'ALL' }"
+              @click="emit('selectCategory', 'ALL')"
+            >
+              Todas
+              <span class="filter-count">{{ totalAllCount }}</span>
+            </button>
 
-          <!-- Nuevo filtro de Ingresos -->
-          <button
-            type="button"
-            class="filter-btn"
-            :class="{ active: activeCategory === 'INCOMES' }"
-            style="--cat-color: #059669"
-            @click="toggleCategory('INCOMES')"
-          >
-            <span class="filter-dot" style="background-color: #059669"></span>
-            Ingresos
-            <span class="filter-count">{{ summary.incomes.length }}</span>
-          </button>
+            <button
+              type="button"
+              class="filter-btn"
+              :class="{ active: activeCategory === 'INCOMES' }"
+              style="--cat-color: #059669"
+              @click="toggleCategory('INCOMES')"
+            >
+              <span class="filter-dot" style="background-color: #059669"></span>
+              Ingresos
+              <span class="filter-count">{{ summary.incomes.length }}</span>
+            </button>
+
+            <button
+              v-for="cat in summary.breakdownByCategory"
+              :key="cat.category"
+              type="button"
+              class="filter-btn"
+              :class="{ active: activeCategory === cat.category }"
+              :style="{ '--cat-color': DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
+              @click="toggleCategory(cat.category)"
+            >
+              <span
+                class="filter-dot"
+                :style="{ backgroundColor: DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
+              ></span>
+              {{ cat.label }}
+              <span class="filter-count">{{ cat.itemCount }}</span>
+            </button>
+          </div>
+
+          <span class="actions-divider" aria-hidden="true"></span>
 
           <button
-            v-for="cat in summary.breakdownByCategory"
-            :key="cat.category"
             type="button"
-            class="filter-btn"
-            :class="{ active: activeCategory === cat.category }"
-            :style="{ '--cat-color': DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
-            @click="toggleCategory(cat.category)"
+            class="export-excel-btn"
+            title="Exportar la vista actual a Excel"
+            @click="emit('exportExcel')"
           >
-            <span
-              class="filter-dot"
-              :style="{ backgroundColor: DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
-            ></span>
-            {{ cat.label }}
-            <span class="filter-count">{{ cat.itemCount }}</span>
+            ⬇ Exportar Excel
           </button>
         </div>
       </div>
@@ -122,7 +132,7 @@ const toggleCategory = (category: GridFilterType) => {
             </tr>
           </thead>
           <tbody>
-            <!-- Filas de Ingresos (cuando el filtro es 'INCOMES' o 'ALL') -->
+            <!-- Filas de Ingresos -->
             <template v-if="showIncomes">
               <tr
                 v-for="income in summary.incomes"
@@ -280,17 +290,38 @@ const toggleCategory = (category: GridFilterType) => {
   flex-wrap: wrap;
 }
 
-.table-title-group h2 {
+.title-and-export-mobile h2 {
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .filter-bar {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   flex-wrap: wrap;
+  padding: 0.22rem;
+  border-radius: 0.5rem;
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
+  max-width: 100%;
+}
+
+.actions-divider {
+  width: 1px;
+  height: 1.5rem;
+  background: var(--border-subtle);
+  margin: 0 0.1rem;
+  flex-shrink: 0;
 }
 
 .filter-btn {
@@ -337,8 +368,34 @@ const toggleCategory = (category: GridFilterType) => {
   color: var(--text-secondary);
 }
 
+.export-excel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.85rem;
+  border-radius: 0.45rem;
+  border: 1px solid #059669;
+  background: #059669;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(5, 150, 105, 0.25);
+  flex-shrink: 0;
+}
+
+.export-excel-btn:hover {
+  background: #047857;
+  border-color: #047857;
+}
+
 .table-responsive {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border-subtle);
   border-radius: 0.55rem;
 }
@@ -469,5 +526,38 @@ const toggleCategory = (category: GridFilterType) => {
   text-align: center !important;
   padding: 2rem !important;
   color: var(--text-secondary);
+}
+
+/* Ajustes responsivos para tablets y móviles */
+@media (max-width: 768px) {
+  .table-card {
+    padding: 0.85rem;
+  }
+
+  .top-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .actions-divider {
+    display: none;
+  }
+
+  .filter-bar {
+    flex: 1;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .export-excel-btn {
+    width: 100%;
+  }
+
+  .distribution-table th,
+  .distribution-table td {
+    padding: 0.6rem 0.65rem;
+    font-size: 0.8rem;
+  }
 }
 </style>

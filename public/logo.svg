@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <defs>
+    <linearGradient id="bgGrad" x1="12" y1="8" x2="116" y2="120" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e40af" />
+      <stop offset="55%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="coinGrad" x1="68" y1="74" x2="118" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f59e0b" />
+    </linearGradient>
+  </defs>
+
+  <!-- Escudo / Fondo redondeado de la app -->
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#bgGrad)" />
+
+  <!-- Orejas largas de Conejo con puntas estilo Panda -->
+  <!-- Oreja izquierda de conejo -->
+  <g transform="rotate(-10 43 36)">
+    <rect x="31" y="10" width="22" height="48" rx="11" fill="#ffffff" stroke="#0f172a" stroke-width="4" />
+    <path d="M31 21C31 14.9249 35.9249 10 42 10C48.0751 10 53 14.9249 53 21V24H31V21Z" fill="#0f172a" />
+    <rect x="37" y="24" width="10" height="22" rx="5" fill="#f472b6" opacity="0.85" />
+  </g>
+
+  <!-- Oreja derecha de conejo -->
+  <g transform="rotate(10 85 36)">
+    <rect x="75" y="10" width="22" height="48" rx="11" fill="#ffffff" stroke="#0f172a" stroke-width="4" />
+    <path d="M75 21C75 14.9249 79.9249 10 86 10C92.0751 10 97 14.9249 97 21V24H75V21Z" fill="#0f172a" />
+    <rect x="81" y="24" width="10" height="22" rx="5" fill="#f472b6" opacity="0.85" />
+  </g>
+
+  <!-- Orejitas redondas de Panda en la base -->
+  <circle cx="30" cy="52" r="11" fill="#0f172a" />
+  <circle cx="98" cy="52" r="11" fill="#0f172a" />
+
+  <!-- Cabeza de Panda-Conejo -->
+  <rect x="24" y="42" width="80" height="66" rx="33" fill="#ffffff" stroke="#0f172a" stroke-width="4.5" />
+
+  <!-- Manchas oculares de Panda -->
+  <ellipse cx="46" cy="72" rx="12" ry="14" transform="rotate(-14 46 72)" fill="#0f172a" />
+  <ellipse cx="82" cy="72" rx="12" ry="14" transform="rotate(14 82 72)" fill="#0f172a" />
+
+  <!-- Ojos brillantes -->
+  <circle cx="47" cy="70" r="4.2" fill="#ffffff" />
+  <circle cx="49" cy="68.5" r="1.5" fill="#60a5fa" />
+  <circle cx="81" cy="70" r="4.2" fill="#ffffff" />
+  <circle cx="83" cy="68.5" r="1.5" fill="#60a5fa" />
+
+  <!-- Mejillas rosadas de conejo -->
+  <ellipse cx="34" cy="84" rx="5.5" ry="3.2" fill="#f472b6" opacity="0.75" />
+  <ellipse cx="94" cy="84" rx="5.5" ry="3.2" fill="#f472b6" opacity="0.75" />
+
+  <!-- Nariz y dientecitos de conejo -->
+  <ellipse cx="64" cy="80" rx="5.5" ry="4" fill="#0f172a" />
+  <path d="M58 86Q64 90 70 86" stroke="#0f172a" stroke-width="3" stroke-linecap="round" />
+  <rect x="60.5" y="87" width="7" height="6" rx="2" fill="#ffffff" stroke="#0f172a" stroke-width="2" />
+  <line x1="64" y1="87" x2="64" y2="93" stroke="#0f172a" stroke-width="1.8" />
+
+  <!-- Emblema Financiero (Moneda / Gráfico de Distribución en la esquina inferior derecha) -->
+  <circle cx="96" cy="96" r="22" fill="url(#coinGrad)" stroke="#0f172a" stroke-width="4" />
+  <!-- Segmento de distribución (Ahorro / Gastos) -->
+  <path d="M96 96 L96 78 A18 18 0 0 1 114 96 Z" fill="#10b981" />
+  <circle cx="96" cy="96" r="12" fill="#fef3c7" stroke="#0f172a" stroke-width="2.5" />
+  <!-- Símbolo $ / S/ de finanzas -->
+  <text
+    x="96"
+    y="101"
+    text-anchor="middle"
+    fill="#0f172a"
+    font-family="system-ui, sans-serif"
+    font-weight="900"
+    font-size="14"
+  >
+    $
+  </text>
+</svg>
+

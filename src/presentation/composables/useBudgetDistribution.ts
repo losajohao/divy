@@ -3,17 +3,23 @@ import {
   AddAllocationItemUseCase,
   type CreateAllocationInput,
 } from '@/application/use-cases/AddAllocationItemUseCase'
+import { ExportDistributionUseCase } from '@/application/use-cases/ExportDistributionUseCase'
 import { GetDistributionSummaryUseCase } from '@/application/use-cases/GetDistributionSummaryUseCase'
 import { RemoveAllocationItemUseCase } from '@/application/use-cases/RemoveAllocationItemUseCase'
 import { UpdateFinancialBaseUseCase } from '@/application/use-cases/UpdateFinancialBaseUseCase'
 import type { AllocationItem, FinancialBase } from '@/domain/entities/AllocationItem'
-import type { DistributionCategory } from '@/domain/entities/DistributionCategory'
+import {
+  DISTRIBUTION_CATEGORIES,
+  type DistributionCategory,
+} from '@/domain/entities/DistributionCategory'
 import type { DistributionSummary } from '@/domain/entities/DistributionSummary'
 import type { IBudgetRepository } from '@/domain/repositories/IBudgetRepository'
 import {
   DistributionCalculator,
   type IDistributionCalculator,
 } from '@/domain/services/DistributionCalculator'
+import type { IBudgetExporter } from '@/domain/services/IBudgetExporter'
+import { ExcelBudgetExporter } from '@/infrastructure/exporters/ExcelBudgetExporter'
 import { LocalStorageBudgetRepository } from '@/infrastructure/repositories/LocalStorageBudgetRepository'
 
 export type GridFilterType = DistributionCategory | 'ALL' | 'INCOMES'
@@ -21,11 +27,13 @@ export type GridFilterType = DistributionCategory | 'ALL' | 'INCOMES'
 export function useBudgetDistribution(
   repository: IBudgetRepository = new LocalStorageBudgetRepository(),
   calculator: IDistributionCalculator = new DistributionCalculator(),
+  exporter: IBudgetExporter = new ExcelBudgetExporter(),
 ) {
   const getSummaryUseCase = new GetDistributionSummaryUseCase(repository, calculator)
   const updateBaseUseCase = new UpdateFinancialBaseUseCase(repository)
   const addAllocationUseCase = new AddAllocationItemUseCase(repository)
   const removeAllocationUseCase = new RemoveAllocationItemUseCase(repository)
+  const exportUseCase = new ExportDistributionUseCase(exporter)
 
   const initialSnapshot = getSummaryUseCase.execute()
 
@@ -85,6 +93,26 @@ export function useBudgetDistribution(
     return items.value.filter((item) => item.category === activeCategoryFilter.value)
   })
 
+  const exportToExcel = () => {
+    const filter = activeCategoryFilter.value
+    const filterName =
+      filter === 'ALL'
+        ? 'Todas'
+        : filter === 'INCOMES'
+          ? 'Ingresos'
+          : DISTRIBUTION_CATEGORIES[filter].label
+
+    const incomesToExport =
+      filter === 'ALL' || filter === 'INCOMES' ? summary.value.incomes : []
+
+    exportUseCase.execute({
+      summary: summary.value,
+      incomes: incomesToExport,
+      items: filteredItems.value,
+      filterName,
+    })
+  }
+
   return {
     summary,
     items,
@@ -95,5 +123,6 @@ export function useBudgetDistribution(
     removeIncome,
     addAllocation,
     removeAllocation,
+    exportToExcel,
   }
 }

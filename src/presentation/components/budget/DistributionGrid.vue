@@ -1,0 +1,382 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { AllocationItem } from '@/domain/entities/AllocationItem'
+import { Currency, formatMoney } from '@/domain/entities/Currency'
+import {
+  DISTRIBUTION_CATEGORIES,
+  type DistributionCategory,
+} from '@/domain/entities/DistributionCategory'
+import type { DistributionSummary } from '@/domain/entities/DistributionSummary'
+
+const props = defineProps<{
+  summary: DistributionSummary
+  items: AllocationItem[]
+  activeCategory: DistributionCategory | 'ALL'
+}>()
+
+const emit = defineEmits<{
+  removeAllocation: [id: string]
+  selectCategory: [category: DistributionCategory | 'ALL']
+}>()
+
+const getEquivalentPen = (item: AllocationItem): number => {
+  return item.currency === Currency.USD ? item.amount * props.summary.exchangeRate : item.amount
+}
+
+const getPercentageOfTotal = (item: AllocationItem) => {
+  if (props.summary.totalAvailable <= 0) return '0.0%'
+  const penAmount = getEquivalentPen(item)
+  return `${((penAmount / props.summary.totalAvailable) * 100).toFixed(1)}%`
+}
+
+const visibleTotalPen = computed(() =>
+  props.items.reduce((sum, item) => sum + getEquivalentPen(item), 0),
+)
+
+const totalItemCount = computed(() =>
+  props.summary.breakdownByCategory.reduce((sum, cat) => sum + cat.itemCount, 0),
+)
+
+const toggleCategory = (category: DistributionCategory) => {
+  if (props.activeCategory === category) {
+    emit('selectCategory', 'ALL')
+  } else {
+    emit('selectCategory', category)
+  }
+}
+</script>
+
+<template>
+  <section class="grid-panel">
+    <div class="table-card">
+      <!-- Cabecera compacta con título a la izquierda y filtros pequeños a la derecha -->
+      <div class="table-top-bar">
+        <div class="table-title-group">
+          <h2>Grilla de Distribución</h2>
+        </div>
+
+        <!-- Filtros minimalistas y compactos -->
+        <div class="filter-bar" role="tablist" aria-label="Filtrar por categoría">
+          <button
+            type="button"
+            class="filter-btn"
+            :class="{ active: activeCategory === 'ALL' }"
+            @click="emit('selectCategory', 'ALL')"
+          >
+            Todas
+            <span class="filter-count">{{ totalItemCount }}</span>
+          </button>
+
+          <button
+            v-for="cat in summary.breakdownByCategory"
+            :key="cat.category"
+            type="button"
+            class="filter-btn"
+            :class="{ active: activeCategory === cat.category }"
+            :style="{ '--cat-color': DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
+            @click="toggleCategory(cat.category)"
+          >
+            <span
+              class="filter-dot"
+              :style="{ backgroundColor: DISTRIBUTION_CATEGORIES[cat.category].accentColor }"
+            ></span>
+            {{ cat.label }}
+            <span class="filter-count">{{ cat.itemCount }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla principal amplia y clara -->
+      <div class="table-responsive">
+        <table class="distribution-table">
+          <thead>
+            <tr>
+              <th>Concepto / Partida</th>
+              <th>Categoría</th>
+              <th class="text-right">Monto Original</th>
+              <th class="text-right">En Soles (S/)</th>
+              <th class="text-right">% Disponible</th>
+              <th class="text-center">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in items" :key="item.id">
+              <td class="concept-cell">{{ item.concept }}</td>
+              <td>
+                <span
+                  class="category-pill"
+                  :style="{
+                    borderColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                    color: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                  }"
+                >
+                  <span
+                    class="pill-dot"
+                    :style="{
+                      backgroundColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                    }"
+                  ></span>
+                  {{ DISTRIBUTION_CATEGORIES[item.category].label }}
+                </span>
+              </td>
+              <td class="text-right amount-cell">
+                <span :class="item.currency === Currency.USD ? 'usd-badge' : 'pen-badge'">
+                  {{ formatMoney(item.amount, item.currency) }}
+                </span>
+              </td>
+              <td class="text-right equiv-cell">
+                {{ formatMoney(getEquivalentPen(item), Currency.PEN) }}
+              </td>
+              <td class="text-right percent-cell">
+                {{ getPercentageOfTotal(item) }}
+              </td>
+              <td class="text-center">
+                <button
+                  type="button"
+                  class="delete-btn"
+                  title="Eliminar partida"
+                  @click="emit('removeAllocation', item.id)"
+                >
+                  Quitar
+                </button>
+              </td>
+            </tr>
+            <tr v-if="items.length === 0">
+              <td colspan="6" class="empty-row">
+                No hay partidas registradas en esta categoría.
+              </td>
+            </tr>
+          </tbody>
+          <tfoot v-if="items.length > 0">
+            <tr class="summary-footer-row">
+              <td colspan="3">
+                <strong>Subtotal ({{ items.length }} partidas)</strong>
+              </td>
+              <td class="text-right">
+                <strong>{{ formatMoney(visibleTotalPen, Currency.PEN) }}</strong>
+              </td>
+              <td class="text-right">
+                <strong>
+                  {{
+                    summary.totalAvailable > 0
+                      ? `${((visibleTotalPen / summary.totalAvailable) * 100).toFixed(1)}%`
+                      : '0.0%'
+                  }}
+                </strong>
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.grid-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.table-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.table-title-group h2 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Barra de filtros minimalista */
+.filter-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--cat-color, #2563eb);
+}
+
+.filter-btn.active {
+  background: color-mix(in srgb, var(--cat-color, #2563eb) 14%, var(--surface-card));
+  border-color: var(--cat-color, #2563eb);
+  color: var(--text-primary);
+}
+
+.filter-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.filter-count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.05rem 0.32rem;
+  border-radius: 999px;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+}
+
+/* Tabla principal */
+.table-responsive {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+}
+
+.distribution-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.distribution-table th,
+.distribution-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+}
+
+.distribution-table thead th {
+  background: var(--surface-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.distribution-table tbody tr:hover {
+  background: var(--surface-muted);
+}
+
+.distribution-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.summary-footer-row td {
+  background: var(--surface-muted);
+  border-top: 2px solid var(--border-subtle);
+  border-bottom: none;
+  font-size: 0.84rem;
+  color: var(--text-primary);
+}
+
+.text-right {
+  text-align: right !important;
+}
+
+.text-center {
+  text-align: center !important;
+}
+
+.concept-cell {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.amount-cell {
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.usd-badge {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+}
+
+.equiv-cell {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.percent-cell {
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.pill-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+}
+
+.delete-btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.empty-row {
+  text-align: center !important;
+  padding: 2rem !important;
+  color: var(--text-secondary);
+}
+</style>

@@ -1,4 +1,5 @@
 import type { DistributionCategory } from './DistributionCategory'
+import type { IncomeEntry } from './IncomeSource'
 
 export interface CategoryBreakdown {
   category: DistributionCategory
@@ -12,7 +13,8 @@ export interface CategoryBreakdown {
 
 export interface DistributionSummary {
   currentBalance: number
-  monthlySalary: number
+  totalIncomes: number
+  incomes: IncomeEntry[]
   exchangeRate: number
   totalAvailable: number
   totalAllocated: number

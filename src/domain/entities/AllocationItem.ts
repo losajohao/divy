@@ -1,10 +1,11 @@
 import type { Currency } from './Currency'
 import type { DistributionCategory } from './DistributionCategory'
+import type { IncomeEntry } from './IncomeSource'
 
 export interface FinancialBase {
   currentBalance: number
-  monthlySalary: number
   exchangeRate: number
+  incomes: IncomeEntry[]
 }
 
 export interface AllocationItem {

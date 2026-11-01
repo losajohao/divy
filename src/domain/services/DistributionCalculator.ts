@@ -16,9 +16,10 @@ export class DistributionCalculator implements IDistributionCalculator {
 
   calculate(base: FinancialBase, items: AllocationItem[]): DistributionSummary {
     const currentBalance = Math.max(0, Number(base.currentBalance) || 0)
-    const monthlySalary = Math.max(0, Number(base.monthlySalary) || 0)
     const exchangeRate = Math.max(0.01, Number(base.exchangeRate) || 3.75)
-    const totalAvailable = currentBalance + monthlySalary
+    const incomes = Array.isArray(base.incomes) ? base.incomes : []
+    const totalIncomes = incomes.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0)
+    const totalAvailable = currentBalance + totalIncomes
 
     const categories = Object.values(DistributionCategory)
 
@@ -59,7 +60,8 @@ export class DistributionCalculator implements IDistributionCalculator {
 
     return {
       currentBalance,
-      monthlySalary,
+      totalIncomes,
+      incomes,
       exchangeRate,
       totalAvailable,
       totalAllocated,

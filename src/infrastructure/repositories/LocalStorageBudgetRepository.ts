@@ -1,15 +1,22 @@
 import type { AllocationItem, FinancialBase } from '@/domain/entities/AllocationItem'
 import { Currency } from '@/domain/entities/Currency'
 import { DistributionCategory } from '@/domain/entities/DistributionCategory'
+import { IncomeSourceType } from '@/domain/entities/IncomeSource'
 import type { IBudgetRepository } from '@/domain/repositories/IBudgetRepository'
 
-const BASE_STORAGE_KEY = 'divy_financial_base_v3'
+const BASE_STORAGE_KEY = 'divy_financial_base_v4'
 const ALLOCATIONS_STORAGE_KEY = 'divy_allocations_v3'
 
 const DEFAULT_BASE: FinancialBase = {
   currentBalance: 850,
-  monthlySalary: 4500,
   exchangeRate: 3.75,
+  incomes: [
+    {
+      id: 'inc-salary',
+      type: IncomeSourceType.SALARY,
+      amount: 4500,
+    },
+  ],
 }
 
 const DEFAULT_ALLOCATIONS: AllocationItem[] = [
@@ -60,17 +67,17 @@ export class LocalStorageBudgetRepository implements IBudgetRepository {
     const raw = localStorage.getItem(BASE_STORAGE_KEY)
     if (!raw) {
       this.saveFinancialBase(DEFAULT_BASE)
-      return { ...DEFAULT_BASE }
+      return { ...DEFAULT_BASE, incomes: [...DEFAULT_BASE.incomes] }
     }
     try {
       const parsed = JSON.parse(raw) as Partial<FinancialBase>
       return {
         currentBalance: Number(parsed.currentBalance ?? DEFAULT_BASE.currentBalance),
-        monthlySalary: Number(parsed.monthlySalary ?? DEFAULT_BASE.monthlySalary),
         exchangeRate: Number(parsed.exchangeRate ?? DEFAULT_BASE.exchangeRate),
+        incomes: Array.isArray(parsed.incomes) ? parsed.incomes : [...DEFAULT_BASE.incomes],
       }
     } catch {
-      return { ...DEFAULT_BASE }
+      return { ...DEFAULT_BASE, incomes: [...DEFAULT_BASE.incomes] }
     }
   }
 

@@ -21,14 +21,14 @@ defineProps<{
 
     <div class="metrics-bar">
       <div class="metric-item">
-        <span class="metric-label">Base Disponible (S/)</span>
+        <span class="metric-label">Bolsa Disponible (S/)</span>
         <div class="metric-compose">
           <strong class="metric-value">
             {{ formatMoney(summary.totalAvailable, Currency.PEN) }}
           </strong>
           <span class="metric-breakdown">
-            ({{ formatMoney(summary.currentBalance, Currency.PEN) }} +
-            {{ formatMoney(summary.monthlySalary, Currency.PEN) }})
+            ({{ formatMoney(summary.currentBalance, Currency.PEN) }} saldo +
+            {{ formatMoney(summary.totalIncomes, Currency.PEN) }} ingresos)
           </span>
         </div>
       </div>

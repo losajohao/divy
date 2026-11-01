@@ -10,6 +10,7 @@ const {
   activeCategoryFilter,
   errorMessage,
   updateFinancialBase,
+  removeIncome,
   addAllocation,
   removeAllocation,
 } = useBudgetDistribution()
@@ -24,8 +25,8 @@ const {
         <div class="workspace-form">
           <DistributionForm
             :current-balance="summary.currentBalance"
-            :monthly-salary="summary.monthlySalary"
             :exchange-rate="summary.exchangeRate"
+            :incomes="summary.incomes"
             :error-message="errorMessage"
             @update-base="updateFinancialBase"
             @add-allocation="addAllocation"
@@ -38,6 +39,7 @@ const {
             :items="filteredItems"
             :active-category="activeCategoryFilter"
             @remove-allocation="removeAllocation"
+            @remove-income="removeIncome"
             @select-category="(category) => (activeCategoryFilter = category)"
           />
         </div>
@@ -64,7 +66,7 @@ const {
   max-width: 1480px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
 }

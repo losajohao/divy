@@ -7,11 +7,16 @@ import {
   DISTRIBUTION_CATEGORIES,
   DistributionCategory,
 } from '@/domain/entities/DistributionCategory'
+import {
+  INCOME_SOURCES,
+  type IncomeEntry,
+  IncomeSourceType,
+} from '@/domain/entities/IncomeSource'
 
 const props = defineProps<{
   currentBalance: number
-  monthlySalary: number
   exchangeRate: number
+  incomes: IncomeEntry[]
   errorMessage: string | null
 }>()
 
@@ -20,20 +25,23 @@ const emit = defineEmits<{
   addAllocation: [input: CreateAllocationInput]
 }>()
 
-const baseForm = reactive<FinancialBase>({
+const baseForm = reactive({
   currentBalance: props.currentBalance,
-  monthlySalary: props.monthlySalary,
   exchangeRate: props.exchangeRate,
 })
 
 watch(
-  () => [props.currentBalance, props.monthlySalary, props.exchangeRate],
-  ([newBalance, newSalary, newRate]) => {
+  () => [props.currentBalance, props.exchangeRate],
+  ([newBalance, newRate]) => {
     baseForm.currentBalance = newBalance ?? 0
-    baseForm.monthlySalary = newSalary ?? 0
     baseForm.exchangeRate = newRate ?? 3.75
   },
 )
+
+const newIncomeForm = reactive({
+  type: IncomeSourceType.SALARY,
+  amount: 0,
+})
 
 const allocationForm = reactive<CreateAllocationInput>({
   concept: '',
@@ -42,6 +50,7 @@ const allocationForm = reactive<CreateAllocationInput>({
   amount: 0,
 })
 
+const incomeSourceOptions = Object.values(INCOME_SOURCES)
 const categoryOptions = Object.values(DISTRIBUTION_CATEGORIES)
 const currencyOptions = Object.values(CURRENCIES)
 
@@ -51,12 +60,29 @@ const convertedPreviewPen = computed(() => {
   return formatMoney(Number(allocationForm.amount) * rate, Currency.PEN)
 })
 
-const handleBaseChange = () => {
+const emitBaseUpdate = (updatedIncomes: IncomeEntry[] = props.incomes) => {
   emit('updateBase', {
     currentBalance: Number(baseForm.currentBalance) || 0,
-    monthlySalary: Number(baseForm.monthlySalary) || 0,
     exchangeRate: Number(baseForm.exchangeRate) || 3.75,
+    incomes: updatedIncomes,
   })
+}
+
+const handleAddIncome = () => {
+  const amount = Number(newIncomeForm.amount)
+  if (!amount || amount <= 0) return
+
+  const updated = [
+    ...props.incomes,
+    {
+      id: crypto.randomUUID(),
+      type: newIncomeForm.type,
+      amount,
+    },
+  ]
+
+  newIncomeForm.amount = 0
+  emitBaseUpdate(updated)
 }
 
 const handleAllocationSubmit = () => {
@@ -76,35 +102,23 @@ const handleAllocationSubmit = () => {
 
 <template>
   <aside class="form-panel">
-    <!-- Sección 1: Base Financiera ultracompacta en una fila de 3 columnas -->
+    <!-- Paso 1: Bolsa disponible del mes (sin chips que ocupen espacio) -->
     <div class="panel-section">
       <div class="section-header">
         <span class="step-tag">1</span>
-        <h3>Base Financiera (S/)</h3>
+        <h3>Bolsa del Mes a Distribuir</h3>
       </div>
 
-      <form class="base-grid-3" @submit.prevent="handleBaseChange">
+      <div class="base-grid-2">
         <div class="field">
-          <label for="current-balance">Saldo (S/)</label>
+          <label for="current-balance">Saldo Actual (S/)</label>
           <input
             id="current-balance"
             v-model.number="baseForm.currentBalance"
             type="number"
             min="0"
             step="0.01"
-            @change="handleBaseChange"
-          />
-        </div>
-
-        <div class="field">
-          <label for="monthly-salary">Salario (S/)</label>
-          <input
-            id="monthly-salary"
-            v-model.number="baseForm.monthlySalary"
-            type="number"
-            min="0"
-            step="0.01"
-            @change="handleBaseChange"
+            @change="emitBaseUpdate()"
           />
         </div>
 
@@ -116,19 +130,41 @@ const handleAllocationSubmit = () => {
             type="number"
             min="0.01"
             step="0.01"
-            @change="handleBaseChange"
+            @change="emitBaseUpdate()"
           />
+        </div>
+      </div>
+
+      <form class="income-adder" @submit.prevent="handleAddIncome">
+        <div class="field">
+          <label for="income-source-type">Sumar Fuente al Mes</label>
+          <div class="income-inline-row">
+            <select id="income-source-type" v-model="newIncomeForm.type">
+              <option v-for="src in incomeSourceOptions" :key="src.key" :value="src.key">
+                {{ src.label }}
+              </option>
+            </select>
+            <input
+              v-model.number="newIncomeForm.amount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="S/ Monto"
+              aria-label="Monto de la fuente de ingreso en Soles"
+            />
+            <button type="submit" class="add-mini-btn" title="Sumar a la bolsa del mes">+</button>
+          </div>
         </div>
       </form>
     </div>
 
     <hr class="section-divider" />
 
-    <!-- Sección 2: Registro rápido de partida sin scroll vertical -->
+    <!-- Paso 2: Registro rápido de partida de distribución -->
     <div class="panel-section">
       <div class="section-header">
         <span class="step-tag">2</span>
-        <h3>Nueva Partida</h3>
+        <h3>Distribuir en Categoría</h3>
       </div>
 
       <form class="allocation-stack" @submit.prevent="handleAllocationSubmit">
@@ -152,7 +188,6 @@ const handleAllocationSubmit = () => {
           />
         </div>
 
-        <!-- Moneda y Monto en la misma fila para ahorrar altura -->
         <div class="amount-currency-row">
           <div class="field">
             <label>Moneda</label>
@@ -209,14 +244,14 @@ const handleAllocationSubmit = () => {
   padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.7rem;
   min-width: 0;
 }
 
 .panel-section {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .section-header {
@@ -247,19 +282,48 @@ const handleAllocationSubmit = () => {
 .section-divider {
   border: none;
   border-top: 1px solid var(--border-subtle);
-  margin: 0.1rem 0;
+  margin: 0.05rem 0;
 }
 
-.base-grid-3 {
+.base-grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr 0.85fr;
+  grid-template-columns: 1.2fr 0.8fr;
   gap: 0.45rem;
+}
+
+.income-adder {
+  display: flex;
+  flex-direction: column;
+}
+
+.income-inline-row {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 2.15rem;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.add-mini-btn {
+  height: 2.15rem;
+  border-radius: 0.42rem;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.add-mini-btn:hover {
+  background: rgba(16, 185, 129, 0.22);
 }
 
 .allocation-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .amount-currency-row {
@@ -291,12 +355,12 @@ const handleAllocationSubmit = () => {
   min-width: 0;
   box-sizing: border-box;
   height: 2.15rem;
-  padding: 0 0.55rem;
+  padding: 0 0.5rem;
   border-radius: 0.42rem;
   border: 1px solid var(--border-subtle);
   background: var(--surface-muted);
   color: var(--text-primary);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .field input:focus,
@@ -354,7 +418,7 @@ const handleAllocationSubmit = () => {
   font-size: 0.82rem;
   cursor: pointer;
   transition: background 0.15s ease;
-  margin-top: 0.15rem;
+  margin-top: 0.1rem;
 }
 
 .primary-btn:hover {

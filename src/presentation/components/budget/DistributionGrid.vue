@@ -7,37 +7,47 @@ import {
   type DistributionCategory,
 } from '@/domain/entities/DistributionCategory'
 import type { DistributionSummary } from '@/domain/entities/DistributionSummary'
+import { INCOME_SOURCES } from '@/domain/entities/IncomeSource'
+import type { GridFilterType } from '@/presentation/composables/useBudgetDistribution'
 
 const props = defineProps<{
   summary: DistributionSummary
   items: AllocationItem[]
-  activeCategory: DistributionCategory | 'ALL'
+  activeCategory: GridFilterType
 }>()
 
 const emit = defineEmits<{
   removeAllocation: [id: string]
-  selectCategory: [category: DistributionCategory | 'ALL']
+  removeIncome: [id: string]
+  selectCategory: [category: GridFilterType]
 }>()
 
 const getEquivalentPen = (item: AllocationItem): number => {
   return item.currency === Currency.USD ? item.amount * props.summary.exchangeRate : item.amount
 }
 
-const getPercentageOfTotal = (item: AllocationItem) => {
+const getPercentageOfTotal = (amountPen: number) => {
   if (props.summary.totalAvailable <= 0) return '0.0%'
-  const penAmount = getEquivalentPen(item)
-  return `${((penAmount / props.summary.totalAvailable) * 100).toFixed(1)}%`
+  return `${((amountPen / props.summary.totalAvailable) * 100).toFixed(1)}%`
 }
 
-const visibleTotalPen = computed(() =>
+const showIncomes = computed(
+  () => props.activeCategory === 'INCOMES' || props.activeCategory === 'ALL',
+)
+
+const showAllocations = computed(() => props.activeCategory !== 'INCOMES')
+
+const visibleAllocationTotalPen = computed(() =>
   props.items.reduce((sum, item) => sum + getEquivalentPen(item), 0),
 )
 
-const totalItemCount = computed(() =>
+const totalAllocationCount = computed(() =>
   props.summary.breakdownByCategory.reduce((sum, cat) => sum + cat.itemCount, 0),
 )
 
-const toggleCategory = (category: DistributionCategory) => {
+const totalAllCount = computed(() => totalAllocationCount.value + props.summary.incomes.length)
+
+const toggleCategory = (category: GridFilterType) => {
   if (props.activeCategory === category) {
     emit('selectCategory', 'ALL')
   } else {
@@ -49,13 +59,12 @@ const toggleCategory = (category: DistributionCategory) => {
 <template>
   <section class="grid-panel">
     <div class="table-card">
-      <!-- Cabecera compacta con título a la izquierda y filtros pequeños a la derecha -->
+      <!-- Cabecera compacta con título y barra de filtros incluyendo "Ingresos" -->
       <div class="table-top-bar">
         <div class="table-title-group">
           <h2>Grilla de Distribución</h2>
         </div>
 
-        <!-- Filtros minimalistas y compactos -->
         <div class="filter-bar" role="tablist" aria-label="Filtrar por categoría">
           <button
             type="button"
@@ -64,7 +73,20 @@ const toggleCategory = (category: DistributionCategory) => {
             @click="emit('selectCategory', 'ALL')"
           >
             Todas
-            <span class="filter-count">{{ totalItemCount }}</span>
+            <span class="filter-count">{{ totalAllCount }}</span>
+          </button>
+
+          <!-- Nuevo filtro de Ingresos -->
+          <button
+            type="button"
+            class="filter-btn"
+            :class="{ active: activeCategory === 'INCOMES' }"
+            style="--cat-color: #059669"
+            @click="toggleCategory('INCOMES')"
+          >
+            <span class="filter-dot" style="background-color: #059669"></span>
+            Ingresos
+            <span class="filter-count">{{ summary.incomes.length }}</span>
           </button>
 
           <button
@@ -86,7 +108,7 @@ const toggleCategory = (category: DistributionCategory) => {
         </div>
       </div>
 
-      <!-- Tabla principal amplia y clara -->
+      <!-- Tabla principal -->
       <div class="table-responsive">
         <table class="distribution-table">
           <thead>
@@ -100,69 +122,128 @@ const toggleCategory = (category: DistributionCategory) => {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in items" :key="item.id">
-              <td class="concept-cell">{{ item.concept }}</td>
-              <td>
-                <span
-                  class="category-pill"
-                  :style="{
-                    borderColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
-                    color: DISTRIBUTION_CATEGORIES[item.category].accentColor,
-                  }"
-                >
+            <!-- Filas de Ingresos (cuando el filtro es 'INCOMES' o 'ALL') -->
+            <template v-if="showIncomes">
+              <tr
+                v-for="income in summary.incomes"
+                :key="`inc-${income.id}`"
+                class="income-row"
+              >
+                <td class="concept-cell">{{ INCOME_SOURCES[income.type].label }}</td>
+                <td>
+                  <span class="category-pill income-category-pill">
+                    <span class="pill-dot" style="background-color: #059669"></span>
+                    Ingreso
+                  </span>
+                </td>
+                <td class="text-right amount-cell">
+                  <span class="income-amount-badge">
+                    + {{ formatMoney(income.amount, Currency.PEN) }}
+                  </span>
+                </td>
+                <td class="text-right equiv-cell">
+                  {{ formatMoney(income.amount, Currency.PEN) }}
+                </td>
+                <td class="text-right percent-cell">
+                  {{ getPercentageOfTotal(income.amount) }}
+                </td>
+                <td class="text-center">
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    title="Eliminar ingreso"
+                    @click="emit('removeIncome', income.id)"
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            </template>
+
+            <!-- Filas de Partidas de Distribución -->
+            <template v-if="showAllocations">
+              <tr v-for="item in items" :key="item.id">
+                <td class="concept-cell">{{ item.concept }}</td>
+                <td>
                   <span
-                    class="pill-dot"
+                    class="category-pill"
                     :style="{
-                      backgroundColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                      borderColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                      color: DISTRIBUTION_CATEGORIES[item.category].accentColor,
                     }"
-                  ></span>
-                  {{ DISTRIBUTION_CATEGORIES[item.category].label }}
-                </span>
-              </td>
-              <td class="text-right amount-cell">
-                <span :class="item.currency === Currency.USD ? 'usd-badge' : 'pen-badge'">
-                  {{ formatMoney(item.amount, item.currency) }}
-                </span>
-              </td>
-              <td class="text-right equiv-cell">
-                {{ formatMoney(getEquivalentPen(item), Currency.PEN) }}
-              </td>
-              <td class="text-right percent-cell">
-                {{ getPercentageOfTotal(item) }}
-              </td>
-              <td class="text-center">
-                <button
-                  type="button"
-                  class="delete-btn"
-                  title="Eliminar partida"
-                  @click="emit('removeAllocation', item.id)"
-                >
-                  Quitar
-                </button>
-              </td>
-            </tr>
-            <tr v-if="items.length === 0">
+                  >
+                    <span
+                      class="pill-dot"
+                      :style="{
+                        backgroundColor: DISTRIBUTION_CATEGORIES[item.category].accentColor,
+                      }"
+                    ></span>
+                    {{ DISTRIBUTION_CATEGORIES[item.category].label }}
+                  </span>
+                </td>
+                <td class="text-right amount-cell">
+                  <span :class="item.currency === Currency.USD ? 'usd-badge' : 'pen-badge'">
+                    {{ formatMoney(item.amount, item.currency) }}
+                  </span>
+                </td>
+                <td class="text-right equiv-cell">
+                  {{ formatMoney(getEquivalentPen(item), Currency.PEN) }}
+                </td>
+                <td class="text-right percent-cell">
+                  {{ getPercentageOfTotal(getEquivalentPen(item)) }}
+                </td>
+                <td class="text-center">
+                  <button
+                    type="button"
+                    class="delete-btn"
+                    title="Eliminar partida"
+                    @click="emit('removeAllocation', item.id)"
+                  >
+                    Quitar
+                  </button>
+                </td>
+              </tr>
+            </template>
+
+            <tr
+              v-if="
+                (activeCategory === 'INCOMES' && summary.incomes.length === 0) ||
+                (activeCategory !== 'INCOMES' &&
+                  items.length === 0 &&
+                  (activeCategory !== 'ALL' || summary.incomes.length === 0))
+              "
+            >
               <td colspan="6" class="empty-row">
-                No hay partidas registradas en esta categoría.
+                No hay registros en esta categoría.
               </td>
             </tr>
           </tbody>
-          <tfoot v-if="items.length > 0">
+
+          <tfoot v-if="activeCategory === 'INCOMES' && summary.incomes.length > 0">
             <tr class="summary-footer-row">
               <td colspan="3">
-                <strong>Subtotal ({{ items.length }} partidas)</strong>
+                <strong>Total Fuentes de Ingreso ({{ summary.incomes.length }})</strong>
               </td>
               <td class="text-right">
-                <strong>{{ formatMoney(visibleTotalPen, Currency.PEN) }}</strong>
+                <strong>{{ formatMoney(summary.totalIncomes, Currency.PEN) }}</strong>
               </td>
               <td class="text-right">
-                <strong>
-                  {{
-                    summary.totalAvailable > 0
-                      ? `${((visibleTotalPen / summary.totalAvailable) * 100).toFixed(1)}%`
-                      : '0.0%'
-                  }}
-                </strong>
+                <strong>{{ getPercentageOfTotal(summary.totalIncomes) }}</strong>
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+
+          <tfoot v-else-if="items.length > 0">
+            <tr class="summary-footer-row">
+              <td colspan="3">
+                <strong>Subtotal Distribuido ({{ items.length }} partidas)</strong>
+              </td>
+              <td class="text-right">
+                <strong>{{ formatMoney(visibleAllocationTotalPen, Currency.PEN) }}</strong>
+              </td>
+              <td class="text-right">
+                <strong>{{ getPercentageOfTotal(visibleAllocationTotalPen) }}</strong>
               </td>
               <td></td>
             </tr>
@@ -205,7 +286,6 @@ const toggleCategory = (category: DistributionCategory) => {
   color: var(--text-primary);
 }
 
-/* Barra de filtros minimalista */
 .filter-bar {
   display: inline-flex;
   align-items: center;
@@ -257,7 +337,6 @@ const toggleCategory = (category: DistributionCategory) => {
   color: var(--text-secondary);
 }
 
-/* Tabla principal */
 .table-responsive {
   overflow-x: auto;
   border: 1px solid var(--border-subtle);
@@ -329,6 +408,13 @@ const toggleCategory = (category: DistributionCategory) => {
   border-radius: 0.35rem;
 }
 
+.income-amount-badge {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+}
+
 .equiv-cell {
   font-weight: 600;
   color: var(--text-primary);
@@ -351,6 +437,11 @@ const toggleCategory = (category: DistributionCategory) => {
   border-radius: 999px;
   border: 1px solid;
   white-space: nowrap;
+}
+
+.income-category-pill {
+  border-color: #059669;
+  color: #059669;
 }
 
 .pill-dot {

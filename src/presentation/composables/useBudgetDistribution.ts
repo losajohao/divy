@@ -16,6 +16,8 @@ import {
 } from '@/domain/services/DistributionCalculator'
 import { LocalStorageBudgetRepository } from '@/infrastructure/repositories/LocalStorageBudgetRepository'
 
+export type GridFilterType = DistributionCategory | 'ALL' | 'INCOMES'
+
 export function useBudgetDistribution(
   repository: IBudgetRepository = new LocalStorageBudgetRepository(),
   calculator: IDistributionCalculator = new DistributionCalculator(),
@@ -29,7 +31,7 @@ export function useBudgetDistribution(
 
   const summary = ref<DistributionSummary>(initialSnapshot.summary)
   const items = ref<AllocationItem[]>(initialSnapshot.items)
-  const activeCategoryFilter = ref<DistributionCategory | 'ALL'>('ALL')
+  const activeCategoryFilter = ref<GridFilterType>('ALL')
   const errorMessage = ref<string | null>(null)
 
   const refreshState = () => {
@@ -41,6 +43,17 @@ export function useBudgetDistribution(
   const updateFinancialBase = (base: FinancialBase) => {
     errorMessage.value = null
     updateBaseUseCase.execute(base)
+    refreshState()
+  }
+
+  const removeIncome = (incomeId: string) => {
+    errorMessage.value = null
+    const updatedIncomes = summary.value.incomes.filter((inc) => inc.id !== incomeId)
+    updateBaseUseCase.execute({
+      currentBalance: summary.value.currentBalance,
+      exchangeRate: summary.value.exchangeRate,
+      incomes: updatedIncomes,
+    })
     refreshState()
   }
 
@@ -63,6 +76,9 @@ export function useBudgetDistribution(
   }
 
   const filteredItems = computed(() => {
+    if (activeCategoryFilter.value === 'INCOMES') {
+      return []
+    }
     if (activeCategoryFilter.value === 'ALL') {
       return items.value
     }
@@ -76,8 +92,8 @@ export function useBudgetDistribution(
     activeCategoryFilter,
     errorMessage,
     updateFinancialBase,
+    removeIncome,
     addAllocation,
     removeAllocation,
   }
 }
-
